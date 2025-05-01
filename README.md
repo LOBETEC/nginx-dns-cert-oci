@@ -12,6 +12,7 @@ Automatización de certificados Let's Encrypt wildcard (`*.midominio.com`) usand
 - Renovación diaria mediante `cron` dentro del contenedor
 - Uso de variables de entorno vía `.env` para facilitar la portabilidad
 - Separación modular con Docker Compose
+- Script auxiliar para renovación manual (`renew-now.sh`)
 
 ---
 
@@ -68,7 +69,7 @@ tenancy=ocid1.tenancy.oc1..xxxxx
 region=eu-frankfurt-1
 ```
 
-Estas credenciales serán montadas en el contenedor como `/root/.oci`.
+Estas credenciales se montan en `/root/.oci` dentro del contenedor `certbot`.
 
 ---
 
@@ -77,17 +78,30 @@ Estas credenciales serán montadas en el contenedor como `/root/.oci`.
 Cuando subes por primera vez un certificado personalizado desde la interfaz web de NGINX Proxy Manager (SSL → Custom → Add Certificate), NPM crea internamente una carpeta como:
 
 ```
-/data/custom_ssl/npm-22/
+/data/custom_ssl/npm-1/
 ```
 
-Este número (`22`) es un **ID autogenerado por NPM**, y puede variar. Asegúrate de:
+1. Sube una vez el `.pem` desde la interfaz de NPM (SSL > Custom)
+2. Observa en `/data/custom_ssl/` la carpeta creada
+3. Usa ese número (`npm-1`, `npm-2`, etc.) en tu `.env`
 
-1. Subir manualmente el certificado una sola vez desde la UI.
-2. Ver qué número de carpeta se ha creado (`npm-XX`).
-3. Luego, configurar el script `copy-to-npm.sh` para sobrescribir esa carpeta automáticamente en las siguientes renovaciones.
+---
 
-> ⚠️ Si subes el mismo certificado más de una vez desde la UI, NPM creará `npm-23`, `npm-24`, etc. Mejor borra los antiguos y mantén solo uno.
+## 🔧 Ejemplo `.env`
 
+```dotenv
+DOMAIN1=midominio1.com
+EMAIL1=admin@midominio1.com
+CERT_NAME1=midominio1.com
+NPM_DIR1=npm-1
+
+DOMAIN2=midominio2.com
+EMAIL2=admin@midominio2.com
+CERT_NAME2=midominio2.com
+NPM_DIR2=npm-2
+```
+
+Puedes seguir añadiendo más pares secuenciales (`DOMAIN3`, etc.)
 ---
 
 ## 🚀 Uso
@@ -191,12 +205,42 @@ for i in 1 2; do
 done
 ```
 
-También puedes renovar manualmente todos los certificados existentes con:
+```
+## 🔁 Renovación automática (cron)
+
+El contenedor `certbot` ejecuta cada día a las 03:00:
 
 ```bash
-docker exec -it certbot certbot renew --dry-run
+/scripts/entrypoint.sh
 ```
 
+`crond` se mantiene en primer plano con `crond -f`.
+
+---
+
+## 🧪 Renovación manual (sin cron)
+
+```bash
+docker exec -it certbot /scripts/renew-now.sh
+```
+
+Este script:
+- Renueva si procede
+- Copia automáticamente los `.pem` a NPM
+
+---
+
+## 🛠 Resetear todo
+
+```bash
+docker compose down
+rm -rf ./npm/data
+rm -rf ./certbot/etc/letsencrypt/*
+rm -rf ./certbot/shared_certs/*
+docker compose up -d
+```
+
+---
 
 ## 👤 Autor
 
