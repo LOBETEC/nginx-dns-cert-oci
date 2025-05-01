@@ -1,0 +1,9 @@
+# No subir datos sensibles
+certbot/oci_credentials/
+certbot/var/
+certbot/etc/
+npm/data/
+npm/letsencrypt/
+certbot/shared_certs/
+*.pem
+*.log

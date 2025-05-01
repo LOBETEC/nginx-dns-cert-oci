@@ -1,0 +1,1 @@
+0 3 * * * /scripts/renew-and-copy.sh >> /var/log/renew.log 2>&1
