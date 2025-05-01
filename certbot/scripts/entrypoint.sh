@@ -1,5 +1,14 @@
 #!/bin/sh
 
+LOCKFILE="/tmp/certbot.lock"
+
+if [ -f "$LOCKFILE" ]; then
+  echo "[WARN] Certbot ya está ejecutándose. Saliendo."
+  exit 0
+fi
+
+touch "$LOCKFILE"
+
 echo "[INFO] Procesando múltiples certificados..."
 
 for i in $(seq 1 10); do
@@ -17,8 +26,8 @@ for i in $(seq 1 10); do
   CERT_PATH="/etc/letsencrypt/live/$CERT_NAME"
 
   if [ ! -f "$CERT_PATH/fullchain.pem" ]; then
-    echo "[INFO] Certificado no existe. Generando..."
-    certbot certonly \
+    echo "[INFO] Certificado no existe. Intentando generar..."
+    PYTHONWARNINGS="ignore::DeprecationWarning" certbot certonly \
       --authenticator dns-oci \
       --email "$EMAIL" \
       -d "$DOMAIN" -d "*.$DOMAIN" \
@@ -27,19 +36,28 @@ for i in $(seq 1 10); do
       --dns-oci-propagation-seconds 300 \
       --cert-name "$CERT_NAME"
   else
-    echo "[INFO] Certificado $CERT_NAME ya existe. Renovando si es necesario..."
-    certbot renew --cert-name "$CERT_NAME" --deploy-hook "echo 'Renovado $CERT_NAME'"
+    echo "[INFO] Certificado $CERT_NAME ya existe. Intentando renovar..."
+    PYTHONWARNINGS="ignore::DeprecationWarning" certbot renew \
+      --cert-name "$CERT_NAME" \
+      --deploy-hook "echo 'Renovado $CERT_NAME'"
   fi
 
-  # Copiar a NGINX Proxy Manager
-  echo "[INFO] Copiando certificados a /shared_certs/$NPM_DIR..."
-  mkdir -p "/shared_certs/$NPM_DIR"
-  cp "$CERT_PATH/fullchain.pem" "/shared_certs/$NPM_DIR/"
-  cp "$CERT_PATH/privkey.pem" "/shared_certs/$NPM_DIR/"
-  cp "$CERT_PATH/chain.pem" "/shared_certs/$NPM_DIR/"
-  chmod 600 "/shared_certs/$NPM_DIR/"*.pem
+  if [ -f "$CERT_PATH/fullchain.pem" ] && [ -f "$CERT_PATH/privkey.pem" ]; then
+    DST="/shared_certs/$NPM_DIR"
+    echo "[INFO] Copiando certificados a $DST..."
+    mkdir -p "$DST"
+    cp "$CERT_PATH/fullchain.pem" "$DST/"
+    cp "$CERT_PATH/privkey.pem" "$DST/"
+    cp "$CERT_PATH/chain.pem" "$DST/"
+    chmod 600 "$DST"/*.pem
+    echo "[OK] Copiados certificados de $CERT_NAME → $NPM_DIR"
+  else
+    echo "[WARN] No se encontraron archivos válidos para $CERT_NAME"
+  fi
 done
 
 echo "[INFO] Iniciando cron para renovaciones automáticas..."
 crontab /scripts/cronjob
 crond -f
+
+rm -f "$LOCKFILE"
