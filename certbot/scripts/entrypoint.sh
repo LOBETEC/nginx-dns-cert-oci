@@ -3,7 +3,6 @@
 for i in 1 2; do
   DOMAIN=$(eval echo \$DOMAIN$i)
   EMAIL=$(eval echo \$EMAIL$i)
-  CERT_NAME=$(eval echo \$CERT_NAME$i)
 
   if [ -z "$DOMAIN" ]; then
     continue
@@ -11,8 +10,8 @@ for i in 1 2; do
 
   echo "[INFO] Procesando certificado para: $DOMAIN"
 
-  if [ ! -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" ]; then
-    echo "[INFO] Generando certificado $CERT_NAME..."
+  if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    echo "[INFO] Generando certificado $DOMAIN..."
     certbot certonly \
       --authenticator dns-oci \
       --email "$EMAIL" \
@@ -20,9 +19,9 @@ for i in 1 2; do
       --agree-tos \
       --non-interactive \
       --dns-oci-propagation-seconds 300 \
-      --cert-name "$CERT_NAME"
+      --cert-name "$DOMAIN"
   else
-    echo "[INFO] El certificado $CERT_NAME ya existe. No se regenera."
+    echo "[INFO] El certificado $DOMAIN ya existe. No se regenera."
   fi
 done
 
