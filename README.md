@@ -151,6 +151,53 @@ docker exec -it certbot certbot certonly \
 
 ---
 
+
+## 🔧 Emisión manual de varios certificados (si lo necesitas)
+
+Puedes definir múltiples dominios y certificados en el archivo `.env`, usando sufijos:
+
+```dotenv
+DOMAIN1=midominio1.com
+EMAIL1=admin@midominio1.com
+CERT_NAME1=midominio1.com
+
+DOMAIN2=midominio2.com
+EMAIL2=admin@midominio2.com
+CERT_NAME2=midominio2.com
+```
+
+El contenedor `certbot` procesará cada grupo de variables (`DOMAINi`, `EMAILi`, `CERT_NAMEi`) en orden, y emitirá un certificado wildcard para cada uno si no existe todavía:
+
+```bash
+for i in 1 2; do
+  DOMAIN=$(eval echo \$DOMAIN$i)
+  EMAIL=$(eval echo \$EMAIL$i)
+  CERT_NAME=$(eval echo \$CERT_NAME$i)
+
+  if [ -z "$DOMAIN" ]; then
+    continue
+  fi
+
+  if [ ! -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" ]; then
+    certbot certonly \
+      --authenticator dns-oci \
+      --email "$EMAIL" \
+      -d "$DOMAIN" -d "*.$DOMAIN" \
+      --agree-tos \
+      --non-interactive \
+      --dns-oci-propagation-seconds 300 \
+      --cert-name "$CERT_NAME"
+  fi
+done
+```
+
+También puedes renovar manualmente todos los certificados existentes con:
+
+```bash
+docker exec -it certbot certbot renew --dry-run
+```
+
+
 ## 👤 Autor
 
 **LOBETEC** – Expertos en Oracle APEX  
@@ -162,4 +209,5 @@ docker exec -it certbot certbot certonly \
 ## 🏷️ Licencia
 
 Uso interno autorizado para LOBETEC. Adaptable como ejemplo para proyectos DevOps y certificados con DNS-OCI.
+
 
