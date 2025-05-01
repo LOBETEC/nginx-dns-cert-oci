@@ -1,16 +1,8 @@
 #!/bin/sh
 
 export PYTHONWARNINGS="ignore::DeprecationWarning"
-LOCKFILE="/tmp/certbot.lock"
 
-if [ -f "$LOCKFILE" ]; then
-  echo "[WARN] Certbot ya está ejecutándose. Saliendo."
-  exit 0
-fi
-
-touch "$LOCKFILE"
-
-echo "[INFO] Procesando múltiples certificados..."
+echo "[INFO] Ejecutando renovación manual de certificados..."
 
 for i in $(seq 1 10); do
   DOMAIN=$(eval echo \$DOMAIN$i)
@@ -37,10 +29,8 @@ for i in $(seq 1 10); do
       --dns-oci-propagation-seconds 300 \
       --cert-name "$CERT_NAME"
   else
-    echo "[INFO] Certificado $CERT_NAME ya existe. Intentando renovar..."
-    PYTHONWARNINGS="ignore::DeprecationWarning" certbot renew \
-      --cert-name "$CERT_NAME" \
-      --deploy-hook "echo 'Renovado $CERT_NAME'"
+    echo "[INFO] Certificado $CERT_NAME ya existe. Renovando si aplica..."
+    certbot renew --cert-name "$CERT_NAME"
   fi
 
   if [ -f "$CERT_PATH/fullchain.pem" ] && [ -f "$CERT_PATH/privkey.pem" ]; then
@@ -57,8 +47,5 @@ for i in $(seq 1 10); do
   fi
 done
 
-echo "[INFO] Iniciando cron para renovaciones automáticas..."
-crontab /scripts/cronjob
-crond -f
+echo "[INFO] Renovación manual finalizada."
 
-rm -f "$LOCKFILE"
