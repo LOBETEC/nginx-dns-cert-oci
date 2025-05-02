@@ -1,4 +1,5 @@
-# NGINX Proxy Manager (NPM)
+# NGINX Proxy Manager (NPM) + Certbot DNS OCI (Wildcard)
+
 
 Automatización de certificados Let's Encrypt wildcard (`*.midominio.com`) usando Certbot con Oracle DNS (OCI), integrados con NGINX Proxy Manager (NPM). Completamente dockerizado, con emisión inicial automática y renovación diaria por `cron`.
 
