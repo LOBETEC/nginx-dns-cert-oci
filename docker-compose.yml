@@ -1,0 +1,32 @@
+services:
+  npm:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: npm
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '81:81'
+    volumes:
+      - ./npm/data:/data
+      - ./npm/letsencrypt:/etc/letsencrypt
+      - ./certbot/shared_certs:/data/custom_ssl
+
+  certbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: certbot
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    volumes:
+      - ./certbot/etc/letsencrypt:/etc/letsencrypt
+      - ./certbot/var/lib/letsencrypt:/var/lib/letsencrypt
+      - ./certbot/var/www/html:/var/www/html
+      - ./certbot/oci_credentials:/root/.oci:ro
+      - ./certbot/scripts:/scripts
+      - ./certbot/shared_certs:/shared_certs
+    entrypoint: /scripts/entrypoint.sh

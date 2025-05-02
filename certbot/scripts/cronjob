@@ -1,0 +1,2 @@
+# Ejecuta la renovación de certificados y copia a NPM todos los días a las 03:00 AM
+0 3 * * * /scripts/entrypoint.sh >> /var/log/renew.log 2>&1
