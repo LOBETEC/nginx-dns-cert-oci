@@ -1,4 +1,3 @@
-
 # NGINX Proxy Manager (NPM) + Certbot DNS OCI (Wildcard)
 
 Automatización de certificados Let's Encrypt wildcard (`*.midominio.com`) usando Certbot con Oracle DNS (OCI), integrados con NGINX Proxy Manager (NPM). Completamente dockerizado, con emisión inicial automática y renovación diaria por `cron`.
@@ -7,6 +6,7 @@ Automatización de certificados Let's Encrypt wildcard (`*.midominio.com`) usand
 
 ## ✅ Características
 
+- Contenedor WAF frontal (NGINX + ModSecurity) con reglas OWASP CRS para proteger NGINX Proxy Manager y servicios expuestos
 - Certificados wildcard válidos para todos los subdominios (`*.midominio.com`)
 - Emisión inicial automática al arrancar el contenedor `certbot`
 - Copia automatizada de certificados a la carpeta `npm-XX` generada por NGINX Proxy Manager tras subir el certificado manualmente por primera vez
@@ -259,3 +259,59 @@ docker compose up -d
 ## 🏷️ Licencia
 
 Uso interno autorizado para LOBETEC. Adaptable como ejemplo para proyectos DevOps y certificados con DNS-OCI.
+---
+
+## 🛡️ Contenedor WAF (ModSecurity) integrado
+
+### 🔐 Protección adicional
+
+Se ha añadido un contenedor WAF (NGINX + ModSecurity) como **proxy inverso frontal**, delante de NGINX Proxy Manager, que intercepta y filtra las peticiones entrantes para aumentar la seguridad.
+
+### 📌 Características:
+
+- Ejecuta NGINX con ModSecurity activado
+- Usa el conjunto de reglas OWASP Core Rule Set (CRS)
+- Registra y puede bloquear peticiones maliciosas (SQLi, XSS, etc.)
+- Funciona como entrada principal en los puertos 80/443 y redirige a NPM internamente
+
+### 🗂️ Estructura adicional
+
+```
+docker/
+└── waf/
+    ├── Dockerfile
+    ├── modsecurity.conf
+    ├── nginx.conf
+    └── rules/
+```
+
+### ⚙️ Fragmento en `docker-compose.yml`:
+
+```yaml
+services:
+  waf:
+    build: ./waf
+    ports:
+      - "443:443"
+    volumes:
+      - ./waf/modsecurity.conf:/etc/modsecurity/modsecurity.conf
+      - ./waf/nginx.conf:/etc/nginx/nginx.conf
+      - ./waf/rules:/etc/modsecurity/rules
+    depends_on:
+      - npm
+```
+
+### 📊 Logs
+
+Puedes inspeccionar eventos con:
+
+```bash
+docker exec -it waf tail -f /var/log/modsec_audit.log
+```
+
+### 🛠 Modo de operación
+
+- Detección (solo registro): `SecRuleEngine DetectionOnly`
+- Bloqueo: `SecRuleEngine On`
+
+Edita esto en `modsecurity.conf` según necesidad.
